@@ -1,6 +1,7 @@
 using System;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading.Tasks;
 
 class Program
 {
@@ -10,28 +11,47 @@ class Program
         while (true)
         {
             int bytesReceived = await client.ReceiveAsync(buffer, SocketFlags.None);
+            string[3] pacote = (Encoding.UTF8.GetString(buffer, 0, bytesReceived)).split('#');
 
-            string message = Encoding.UTF8.GetString(buffer, 0, bytesReceived);
-            Console.WriteLine($"Recebido: {message}");
+            string nome = pacote[1];
+            string mensagem = pacote[2];
+            string hora = pacote[3];
+
+            Console.WriteLine($"{nome}: {mensagem}");
 
 
             await client.SendAsync(Encoding.UTF8.GetBytes($"Servidor: {message}"), SocketFlags.None);
         }
-        client.Dispose();
     }
-    static void Main(String[] args)
+    static async Task Main(String[] args)
     {
-        Socket s = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        Socket server = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
         IPEndPoint localEndPoint = new IPEndPoint(IPAddress.Any, 0);
 
-        s.Bind(localEndPoint);
+        server.Bind(localEndPoint);
 
         int backlog = 15;
 
-        s.Listen(backlog);
+        server.Listen(backlog);
 
-        Socket client = await server.AcceptAsync();
+        try
+        {
+            while (true)
+            {
+                Socket client = await server.AcceptAsync();
+                await HandleClientAsync(client);
 
+
+            }
+        }
+        catch (SocketException e)
+        {
+            Console.WriteLine($"Falha ao aceitar cliente: {ex.Message}");
+        }
+        finally
+        {
+            server.Dispose();
+        }
     }
 }
